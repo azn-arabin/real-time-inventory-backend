@@ -3,12 +3,13 @@ import {
   registerUser,
   getUser,
   loginUser,
-} from "../../controllers/userController";
+} from "../controllers/userController";
+import { anyUserAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post("/register", registerUser);
 router.post("/login", loginUser);
-router.get("/:id", getUser);
+router.get("/:id", anyUserAuth, getUser);
 
 export default router;
