@@ -4,18 +4,18 @@ import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import cors from "cors";
 import dotenv from "dotenv";
-import sequelize from "./config/database";
-import { initSocket } from "./socket";
-import { startReservationScheduler } from "./scheduler/reservationScheduler";
+import sequelize from "./src/lib/config/database";
+import { initSocket } from "./src/socket";
+import { startReservationScheduler } from "./src/scheduler/reservationScheduler";
 
 // import routes
-import userRoutes from "./routes/userRoutes";
-import dropRoutes from "./routes/dropRoutes";
-import reservationRoutes from "./routes/reservationRoutes";
-import purchaseRoutes from "./routes/purchaseRoutes";
+import userRoutes from "./src/routes/userRoutes";
+import dropRoutes from "./src/routes/dropRoutes";
+import reservationRoutes from "./src/routes/reservationRoutes";
+import purchaseRoutes from "./src/routes/purchaseRoutes";
 
 // need to import models so associations get registered
-import "./models";
+import "./src/models";
 
 dotenv.config();
 

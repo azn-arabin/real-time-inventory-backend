@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 import { Reservation, Drop } from "../models";
 import { getIO } from "../socket";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 
 const CHECK_INTERVAL = 10 * 1000; // check every 10 seconds
 
@@ -28,7 +28,9 @@ export const startReservationScheduler = () => {
           await reservation.save({ transaction: t });
 
           // return stock to the drop
-          const drop = await Drop.findByPk(reservation.dropId, { transaction: t });
+          const drop = await Drop.findByPk(reservation.dropId, {
+            transaction: t,
+          });
           if (drop) {
             drop.availableStock += 1;
             await drop.save({ transaction: t });
@@ -47,7 +49,9 @@ export const startReservationScheduler = () => {
               userId: reservation.userId,
             });
 
-            console.log(`reservation ${reservation.id} expired, stock returned for drop ${drop.id}`);
+            console.log(
+              `reservation ${reservation.id} expired, stock returned for drop ${drop.id}`,
+            );
           } else {
             await t.commit();
           }

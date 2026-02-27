@@ -1,5 +1,9 @@
 import { Router } from "express";
-import { createDrop, getDrops, getDrop } from "../controllers/dropController";
+import {
+  createDrop,
+  getDrops,
+  getDrop,
+} from "../../controllers/dropController";
 
 const router = Router();
 

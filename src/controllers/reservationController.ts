@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Drop, Reservation } from "../models";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 import { Transaction } from "sequelize";
 import { getIO } from "../socket";
 
@@ -20,7 +20,9 @@ export const reserveItem = async (req: Request, res: Response) => {
     where: { userId, dropId, status: "active" },
   });
   if (existingReservation) {
-    res.status(409).json({ error: "you already have an active reservation for this item" });
+    res
+      .status(409)
+      .json({ error: "you already have an active reservation for this item" });
     return;
   }
 
@@ -56,7 +58,7 @@ export const reserveItem = async (req: Request, res: Response) => {
     const expiresAt = new Date(Date.now() + RESERVATION_TTL);
     const reservation = await Reservation.create(
       { userId, dropId, status: "active", expiresAt },
-      { transaction: t }
+      { transaction: t },
     );
 
     await t.commit();
@@ -76,7 +78,9 @@ export const reserveItem = async (req: Request, res: Response) => {
     await t.rollback();
     // serialization failure = another transaction got there first
     if (err.parent?.code === "40001") {
-      res.status(409).json({ error: "someone else grabbed it first, try again" });
+      res
+        .status(409)
+        .json({ error: "someone else grabbed it first, try again" });
       return;
     }
     console.error("reserveItem error:", err);

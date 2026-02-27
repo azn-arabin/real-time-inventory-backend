@@ -1,14 +1,15 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 
-class Purchase extends Model {
+class Reservation extends Model {
   declare id: string;
   declare userId: string;
   declare dropId: string;
-  declare reservationId: string;
+  declare status: "active" | "completed" | "expired";
+  declare expiresAt: Date;
 }
 
-Purchase.init(
+Reservation.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -23,16 +24,21 @@ Purchase.init(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    reservationId: {
-      type: DataTypes.UUID,
+    status: {
+      type: DataTypes.ENUM("active", "completed", "expired"),
+      defaultValue: "active",
+      allowNull: false,
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
       allowNull: false,
     },
   },
   {
     sequelize,
-    tableName: "purchases",
+    tableName: "reservations",
     timestamps: true,
-  }
+  },
 );
 
-export default Purchase;
+export default Reservation;

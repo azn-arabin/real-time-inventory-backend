@@ -1,5 +1,5 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 
 class User extends Model {
   declare id: string;
@@ -29,7 +29,7 @@ User.init(
     sequelize,
     tableName: "users",
     timestamps: true,
-  }
+  },
 );
 
 export default User;

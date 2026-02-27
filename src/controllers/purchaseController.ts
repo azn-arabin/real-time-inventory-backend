@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Drop, Purchase, Reservation, User } from "../models";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 import { getIO } from "../socket";
 
 // complete purchase - only if user has an active reservation
@@ -33,7 +33,9 @@ export const completePurchase = async (req: Request, res: Response) => {
 
     if (reservation.status !== "active") {
       await t.rollback();
-      res.status(410).json({ error: "reservation has expired or already been used" });
+      res
+        .status(410)
+        .json({ error: "reservation has expired or already been used" });
       return;
     }
 
@@ -57,7 +59,7 @@ export const completePurchase = async (req: Request, res: Response) => {
         dropId: reservation.dropId,
         reservationId: reservation.id,
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     await t.commit();

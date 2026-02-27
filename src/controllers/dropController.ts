@@ -7,7 +7,9 @@ export const createDrop = async (req: Request, res: Response) => {
     const { name, price, totalStock, imageUrl, dropStartsAt } = req.body;
 
     if (!name || price == null || !totalStock) {
-      res.status(400).json({ error: "name, price, and totalStock are required" });
+      res
+        .status(400)
+        .json({ error: "name, price, and totalStock are required" });
       return;
     }
 
@@ -56,7 +58,7 @@ export const getDrops = async (req: Request, res: Response) => {
             purchasedAt: p.createdAt,
           })),
         };
-      })
+      }),
     );
 
     res.json(dropsWithPurchasers);

@@ -1,5 +1,5 @@
 import { DataTypes, Model } from "sequelize";
-import sequelize from "../config/database";
+import sequelize from "../lib/config/database";
 
 class Drop extends Model {
   declare id: string;
@@ -48,7 +48,7 @@ Drop.init(
     sequelize,
     tableName: "drops",
     timestamps: true,
-  }
+  },
 );
 
 export default Drop;
