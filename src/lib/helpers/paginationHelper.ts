@@ -1,12 +1,12 @@
-import { Document, Model, PopulateOptions } from "mongoose";
+import { Model, ModelStatic, FindOptions, WhereOptions } from "sequelize";
 
 interface PaginateOptions {
-  page?: any;
-  pageSize?: any;
-  populate?: PopulateOptions | (string | PopulateOptions)[];
-  queryOption?: Record<string, unknown> | null;
-  sort?: Record<string, 1 | -1>;
-  select?: { [key: string]: 1 | 0 } | any;
+  page?: number | string;
+  pageSize?: number | string;
+  where?: WhereOptions;
+  include?: FindOptions["include"];
+  order?: FindOptions["order"];
+  attributes?: FindOptions["attributes"];
 }
 
 interface PaginateResult<T> {
@@ -19,40 +19,30 @@ interface PaginateResult<T> {
   };
 }
 
-export const paginate = async <T extends Document>(
-  model: Model<T>,
-  query: Record<string, unknown> = {},
-  options: PaginateOptions = {},
+export const paginate = async <T extends Model>(
+  model: ModelStatic<T>,
+  options: PaginateOptions = {}
 ): Promise<PaginateResult<T>> => {
-  const {
-    page = 1,
-    pageSize = 10,
-    populate = "" as any,
-    queryOption = null,
-    sort = {},
-    select,
-  } = options;
+  const page = Number(options.page) || 1;
+  const pageSize = Number(options.pageSize) || 10;
+  const offset = (page - 1) * pageSize;
 
-  const skip = (page - 1) * pageSize;
-
-  const [totalItems, items] = await Promise.all([
-    model.countDocuments(query),
-    model
-      .find(query, queryOption || undefined)
-      .skip(skip)
-      .limit(pageSize)
-      .populate(populate)
-      .sort(sort)
-      .select(select),
-  ]);
+  const { count, rows } = await model.findAndCountAll({
+    where: options.where,
+    include: options.include,
+    order: options.order || [["createdAt", "DESC"]],
+    attributes: options.attributes,
+    limit: pageSize,
+    offset,
+  });
 
   return {
-    items,
+    items: rows,
     meta: {
-      totalItems,
-      totalPages: Math.ceil(totalItems / pageSize),
-      currentPage: Number(page),
-      pageSize: Number(pageSize),
+      totalItems: count as number,
+      totalPages: Math.ceil((count as number) / pageSize),
+      currentPage: page,
+      pageSize,
     },
   };
 };
