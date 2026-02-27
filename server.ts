@@ -4,6 +4,18 @@ import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import cors from "cors";
 import dotenv from "dotenv";
+import sequelize from "./config/database";
+import { initSocket } from "./socket";
+import { startReservationScheduler } from "./scheduler/reservationScheduler";
+
+// import routes
+import userRoutes from "./routes/userRoutes";
+import dropRoutes from "./routes/dropRoutes";
+import reservationRoutes from "./routes/reservationRoutes";
+import purchaseRoutes from "./routes/purchaseRoutes";
+
+// need to import models so associations get registered
+import "./models";
 
 dotenv.config();
 
@@ -15,21 +27,49 @@ app.use(morgan("dev"));
 
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
   }),
 );
 
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 200,
 });
 
 app.use(limiter);
 
+// routes
+app.use("/api/users", userRoutes);
+app.use("/api/drops", dropRoutes);
+app.use("/api/reservations", reservationRoutes);
+app.use("/api/purchases", purchaseRoutes);
+
+// health check
+app.get("/api/health", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 const server = http.createServer(app);
+
+// init websocket
+initSocket(server);
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// sync db then start
+sequelize
+  .sync({ alter: true })
+  .then(() => {
+    console.log("database synced");
+
+    server.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+
+    // start the reservation expiry checker
+    startReservationScheduler();
+  })
+  .catch((err) => {
+    console.error("failed to sync database:", err);
+    process.exit(1);
+  });
