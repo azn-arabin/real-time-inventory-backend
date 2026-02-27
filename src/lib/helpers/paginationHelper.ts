@@ -21,7 +21,7 @@ interface PaginateResult<T> {
 
 export const paginate = async <T extends Model>(
   model: ModelStatic<T>,
-  options: PaginateOptions = {}
+  options: PaginateOptions = {},
 ): Promise<PaginateResult<T>> => {
   const page = Number(options.page) || 1;
   const pageSize = Number(options.pageSize) || 10;

@@ -29,7 +29,7 @@ export const authorizationMiddleware = ({
   return async (
     req: AuthenticatedRequest,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     const { authorization } = req.headers;
 
@@ -43,10 +43,7 @@ export const authorizationMiddleware = ({
 
     try {
       const token = authorization.replace("Bearer ", "");
-      const payload = jwt.verify(
-        token,
-        process.env.JWT_SECRET!
-      ) as AuthPayload;
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
 
       const dbUser = await User.findByPk(payload.userId);
 

@@ -1,44 +1,59 @@
 import { Request, Response } from "express";
 import { Drop, Purchase, User } from "../models";
+import {
+  sendSuccessResponse,
+  sendFailureResponse,
+} from "../lib/helpers/responseHelper";
+import { paginate } from "../lib/helpers/paginationHelper";
 
-// create a new merch drop (admin API)
+// create a new merch drop (admin only)
 export const createDrop = async (req: Request, res: Response) => {
   try {
     const { name, price, totalStock, imageUrl, dropStartsAt } = req.body;
 
     if (!name || price == null || !totalStock) {
-      res
-        .status(400)
-        .json({ error: "name, price, and totalStock are required" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 400,
+        message: "name, price, and totalStock are required",
+      });
     }
 
     const drop = await Drop.create({
       name,
       price,
       totalStock,
-      availableStock: totalStock, // initially all stock is available
+      availableStock: totalStock,
       imageUrl: imageUrl || null,
       dropStartsAt: dropStartsAt || new Date(),
     });
 
-    res.status(201).json(drop);
+    return sendSuccessResponse({
+      res,
+      statusCode: 201,
+      message: "Drop created",
+      data: drop,
+    });
   } catch (err) {
     console.error("createDrop error:", err);
-    res.status(500).json({ error: "failed to create drop" });
+    return sendFailureResponse({ res, message: "Failed to create drop" });
   }
 };
 
-// get all active drops with latest 3 purchasers
+// get all drops (paginated) with latest 3 purchasers per drop
 export const getDrops = async (req: Request, res: Response) => {
   try {
-    const drops = await Drop.findAll({
+    const { page, pageSize } = req.query;
+
+    const result = await paginate(Drop, {
+      page: page as string,
+      pageSize: pageSize as string,
       order: [["createdAt", "DESC"]],
     });
 
-    // for each drop, get the 3 most recent purchases
+    // attach recent purchasers for each drop
     const dropsWithPurchasers = await Promise.all(
-      drops.map(async (drop) => {
+      result.items.map(async (drop) => {
         const recentPurchases = await Purchase.findAll({
           where: { dropId: drop.id },
           order: [["createdAt", "DESC"]],
@@ -61,24 +76,31 @@ export const getDrops = async (req: Request, res: Response) => {
       }),
     );
 
-    res.json(dropsWithPurchasers);
+    return sendSuccessResponse({
+      res,
+      data: dropsWithPurchasers,
+      meta: result.meta,
+    });
   } catch (err) {
     console.error("getDrops error:", err);
-    res.status(500).json({ error: "failed to fetch drops" });
+    return sendFailureResponse({ res, message: "Failed to fetch drops" });
   }
 };
 
-// get single drop
+// get single drop by id
 export const getDrop = async (req: Request, res: Response) => {
   try {
     const drop = await Drop.findByPk(req.params.id);
     if (!drop) {
-      res.status(404).json({ error: "drop not found" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 404,
+        message: "Drop not found",
+      });
     }
-    res.json(drop);
+    return sendSuccessResponse({ res, data: drop });
   } catch (err) {
     console.error("getDrop error:", err);
-    res.status(500).json({ error: "failed to fetch drop" });
+    return sendFailureResponse({ res, message: "Failed to fetch drop" });
   }
 };

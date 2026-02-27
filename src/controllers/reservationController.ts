@@ -1,18 +1,27 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { Drop, Reservation } from "../models";
 import sequelize from "../lib/config/database";
 import { Transaction } from "sequelize";
 import { getIO } from "../socket";
+import {
+  sendSuccessResponse,
+  sendFailureResponse,
+} from "../lib/helpers/responseHelper";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
 const RESERVATION_TTL = 60 * 1000; // 60 seconds
 
 // reserve an item - atomic, prevents overselling
-export const reserveItem = async (req: Request, res: Response) => {
-  const { userId, dropId } = req.body;
+export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user!.userId;
+  const { dropId } = req.body;
 
-  if (!userId || !dropId) {
-    res.status(400).json({ error: "userId and dropId are required" });
-    return;
+  if (!dropId) {
+    return sendFailureResponse({
+      res,
+      statusCode: 400,
+      message: "dropId is required",
+    });
   }
 
   // check if user already has an active reservation for this drop
@@ -20,10 +29,11 @@ export const reserveItem = async (req: Request, res: Response) => {
     where: { userId, dropId, status: "active" },
   });
   if (existingReservation) {
-    res
-      .status(409)
-      .json({ error: "you already have an active reservation for this item" });
-    return;
+    return sendFailureResponse({
+      res,
+      statusCode: 409,
+      message: "You already have an active reservation for this item",
+    });
   }
 
   // use a transaction with row-level locking
@@ -32,7 +42,7 @@ export const reserveItem = async (req: Request, res: Response) => {
   });
 
   try {
-    // lock the row so no other transaction can read/modify it
+    // lock the drop row so no other transaction can modify it
     const drop = await Drop.findByPk(dropId, {
       lock: Transaction.LOCK.UPDATE,
       transaction: t,
@@ -40,21 +50,27 @@ export const reserveItem = async (req: Request, res: Response) => {
 
     if (!drop) {
       await t.rollback();
-      res.status(404).json({ error: "drop not found" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 404,
+        message: "Drop not found",
+      });
     }
 
     if (drop.availableStock <= 0) {
       await t.rollback();
-      res.status(409).json({ error: "out of stock" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 409,
+        message: "Out of stock",
+      });
     }
 
-    // decrement available stock
+    // decrement stock
     drop.availableStock -= 1;
     await drop.save({ transaction: t });
 
-    // create the reservation
+    // create reservation with 60s TTL
     const expiresAt = new Date(Date.now() + RESERVATION_TTL);
     const reservation = await Reservation.create(
       { userId, dropId, status: "active", expiresAt },
@@ -63,52 +79,62 @@ export const reserveItem = async (req: Request, res: Response) => {
 
     await t.commit();
 
-    // broadcast stock update to all clients
+    // notify all connected clients
     const io = getIO();
     io.emit("stock-update", {
       dropId: drop.id,
       availableStock: drop.availableStock,
     });
 
-    res.status(201).json({
-      reservation,
-      availableStock: drop.availableStock,
+    return sendSuccessResponse({
+      res,
+      statusCode: 201,
+      message: "Item reserved for 60 seconds",
+      data: {
+        reservation,
+        availableStock: drop.availableStock,
+      },
     });
   } catch (err: any) {
     await t.rollback();
-    // serialization failure = another transaction got there first
+    // serialization failure means another transaction beat us
     if (err.parent?.code === "40001") {
-      res
-        .status(409)
-        .json({ error: "someone else grabbed it first, try again" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 409,
+        message: "Someone else grabbed it first, try again",
+      });
     }
     console.error("reserveItem error:", err);
-    res.status(500).json({ error: "reservation failed" });
+    return sendFailureResponse({ res, message: "Reservation failed" });
   }
 };
 
-// get active reservation for a user on a specific drop
-export const getUserReservation = async (req: Request, res: Response) => {
+// get active reservation for current user on a specific drop
+export const getUserReservation = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
   try {
-    const { userId, dropId } = req.query;
+    const userId = req.user!.userId;
+    const { dropId } = req.query;
 
-    const reservation = await Reservation.findOne({
-      where: {
-        userId: userId as string,
-        dropId: dropId as string,
-        status: "active",
-      },
-    });
+    const where: any = { userId, status: "active" };
+    if (dropId) where.dropId = dropId as string;
+
+    const reservation = await Reservation.findOne({ where });
 
     if (!reservation) {
-      res.status(404).json({ error: "no active reservation" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 404,
+        message: "No active reservation found",
+      });
     }
 
-    res.json(reservation);
+    return sendSuccessResponse({ res, data: reservation });
   } catch (err) {
     console.error("getUserReservation error:", err);
-    res.status(500).json({ error: "failed to fetch reservation" });
+    return sendFailureResponse({ res });
   }
 };

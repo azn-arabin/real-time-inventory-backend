@@ -1,15 +1,27 @@
-import { Request, Response } from "express";
-import { Drop, Purchase, Reservation, User } from "../models";
+import { Response } from "express";
+import { Purchase, Reservation, User } from "../models";
 import sequelize from "../lib/config/database";
 import { getIO } from "../socket";
+import {
+  sendSuccessResponse,
+  sendFailureResponse,
+} from "../lib/helpers/responseHelper";
+import { AuthenticatedRequest } from "../middlewares/authMiddleware";
 
-// complete purchase - only if user has an active reservation
-export const completePurchase = async (req: Request, res: Response) => {
-  const { userId, reservationId } = req.body;
+// complete purchase - user must have an active reservation
+export const completePurchase = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  const userId = req.user!.userId;
+  const { reservationId } = req.body;
 
-  if (!userId || !reservationId) {
-    res.status(400).json({ error: "userId and reservationId required" });
-    return;
+  if (!reservationId) {
+    return sendFailureResponse({
+      res,
+      statusCode: 400,
+      message: "reservationId is required",
+    });
   }
 
   const t = await sequelize.transaction();
@@ -21,38 +33,48 @@ export const completePurchase = async (req: Request, res: Response) => {
 
     if (!reservation) {
       await t.rollback();
-      res.status(404).json({ error: "reservation not found" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 404,
+        message: "Reservation not found",
+      });
     }
 
     if (reservation.userId !== userId) {
       await t.rollback();
-      res.status(403).json({ error: "this reservation doesn't belong to you" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 403,
+        message: "This reservation doesn't belong to you",
+      });
     }
 
     if (reservation.status !== "active") {
       await t.rollback();
-      res
-        .status(410)
-        .json({ error: "reservation has expired or already been used" });
-      return;
+      return sendFailureResponse({
+        res,
+        statusCode: 410,
+        message: "Reservation has expired or already been used",
+      });
     }
 
-    // check if it's expired by time
+    // double-check expiry by time
     if (new Date() > reservation.expiresAt) {
       reservation.status = "expired";
       await reservation.save({ transaction: t });
-      await t.rollback();
-      res.status(410).json({ error: "reservation has expired" });
-      return;
+      await t.commit();
+      return sendFailureResponse({
+        res,
+        statusCode: 410,
+        message: "Reservation has expired",
+      });
     }
 
-    // mark reservation as completed
+    // mark reservation completed
     reservation.status = "completed";
     await reservation.save({ transaction: t });
 
-    // create the purchase record
+    // create purchase
     const purchase = await Purchase.create(
       {
         userId,
@@ -64,7 +86,7 @@ export const completePurchase = async (req: Request, res: Response) => {
 
     await t.commit();
 
-    // broadcast purchase event so dashboards update
+    // broadcast purchase to all clients
     const io = getIO();
     const user = await User.findByPk(userId);
     io.emit("purchase-made", {
@@ -73,10 +95,15 @@ export const completePurchase = async (req: Request, res: Response) => {
       purchasedAt: purchase.createdAt,
     });
 
-    res.status(201).json(purchase);
+    return sendSuccessResponse({
+      res,
+      statusCode: 201,
+      message: "Purchase completed",
+      data: purchase,
+    });
   } catch (err) {
     await t.rollback();
     console.error("completePurchase error:", err);
-    res.status(500).json({ error: "purchase failed" });
+    return sendFailureResponse({ res, message: "Purchase failed" });
   }
 };
