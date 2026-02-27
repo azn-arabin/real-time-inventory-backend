@@ -7,14 +7,13 @@ import dotenv from "dotenv";
 import sequelize from "./src/lib/config/database";
 import { initSocket } from "./src/socket";
 import { startReservationScheduler } from "./src/scheduler/reservationScheduler";
-
-// import routes
+import { globalErrorHandler } from "./src/lib/helpers/globalError";
 import userRoutes from "./src/routes/userRoutes";
 import dropRoutes from "./src/routes/dropRoutes";
 import reservationRoutes from "./src/routes/reservationRoutes";
 import purchaseRoutes from "./src/routes/purchaseRoutes";
 
-// need to import models so associations get registered
+// need to import models to registered
 import "./src/models";
 
 dotenv.config();
@@ -49,6 +48,8 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.use(globalErrorHandler);
+
 const server = http.createServer(app);
 
 // init websocket
@@ -56,7 +57,7 @@ initSocket(server);
 
 const PORT = process.env.PORT || 5000;
 
-// sync db then start
+// sync db
 sequelize
   .sync({ alter: true })
   .then(() => {

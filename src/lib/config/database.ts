@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+const useSSL = process.env.DB_SSL === "true";
+
 const sequelize = new Sequelize(
   process.env.DB_NAME || "inventory_db",
   process.env.DB_USER || "postgres",
@@ -12,6 +14,14 @@ const sequelize = new Sequelize(
     port: parseInt(process.env.DB_PORT || "5432"),
     dialect: "postgres",
     logging: false,
+    dialectOptions: useSSL
+      ? {
+          ssl: {
+            require: true,
+            rejectUnauthorized: false,
+          },
+        }
+      : {},
   },
 );
 

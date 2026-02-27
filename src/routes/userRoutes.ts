@@ -3,7 +3,7 @@ import {
   registerUser,
   getUser,
   loginUser,
-} from "../controllers/userController";
+} from "../controllers/authController";
 import { anyUserAuth } from "../middlewares/authMiddleware";
 
 const router = Router();

@@ -90,7 +90,7 @@ export const getDrops = async (req: Request, res: Response) => {
 // get single drop by id
 export const getDrop = async (req: Request, res: Response) => {
   try {
-    const drop = await Drop.findByPk(req.params.id);
+    const drop = await Drop.findByPk(req.params.id as string);
     if (!drop) {
       return sendFailureResponse({
         res,

@@ -136,7 +136,7 @@ export const loginUser = async (req: Request, res: Response) => {
 // get current user profile
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await User.findByPk(req.params.id, {
+    const user = await User.findByPk(req.params.id as string, {
       attributes: ["id", "username", "email", "role", "createdAt"],
     });
     if (!user) {
@@ -149,6 +149,6 @@ export const getUser = async (req: Request, res: Response) => {
     return sendSuccessResponse({ res, data: user });
   } catch (err) {
     console.error("getUser error:", err);
-    return sendFailureResponse({ res });
+    return sendFailureResponse({ res, message: "Failed to fetch user" });
   }
 };
