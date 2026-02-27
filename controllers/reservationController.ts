@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Drop, Reservation } from "../models";
 import sequelize from "../config/database";
 import { Transaction } from "sequelize";
+import { getIO } from "../socket";
 
 const RESERVATION_TTL = 60 * 1000; // 60 seconds
 
@@ -59,6 +60,13 @@ export const reserveItem = async (req: Request, res: Response) => {
     );
 
     await t.commit();
+
+    // broadcast stock update to all clients
+    const io = getIO();
+    io.emit("stock-update", {
+      dropId: drop.id,
+      availableStock: drop.availableStock,
+    });
 
     res.status(201).json({
       reservation,

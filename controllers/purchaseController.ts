@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { Drop, Purchase, Reservation } from "../models";
+import { Drop, Purchase, Reservation, User } from "../models";
 import sequelize from "../config/database";
+import { getIO } from "../socket";
 
 // complete purchase - only if user has an active reservation
 export const completePurchase = async (req: Request, res: Response) => {
@@ -60,6 +61,15 @@ export const completePurchase = async (req: Request, res: Response) => {
     );
 
     await t.commit();
+
+    // broadcast purchase event so dashboards update
+    const io = getIO();
+    const user = await User.findByPk(userId);
+    io.emit("purchase-made", {
+      dropId: reservation.dropId,
+      username: user?.username || "unknown",
+      purchasedAt: purchase.createdAt,
+    });
 
     res.status(201).json(purchase);
   } catch (err) {
