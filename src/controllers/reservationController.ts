@@ -3,6 +3,7 @@ import { Drop, Reservation } from "../models";
 import sequelize from "../lib/config/database";
 import { Transaction } from "sequelize";
 import { getIO } from "../socket";
+import { SOCKET_EVENTS } from "../lib/constants/utils.constants";
 import {
   sendSuccessResponse,
   sendFailureResponse,
@@ -81,7 +82,7 @@ export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
 
     // notify all connected clients
     const io = getIO();
-    io.emit("stock-update", {
+    io.emit(SOCKET_EVENTS.INVENTORY_UPDATE, {
       dropId: drop.id,
       availableStock: drop.availableStock,
     });

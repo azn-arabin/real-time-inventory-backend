@@ -1,6 +1,7 @@
 import { Op } from "sequelize";
 import { Reservation, Drop } from "../models";
 import { getIO } from "../socket";
+import { SOCKET_EVENTS } from "../lib/constants/utils.constants";
 import sequelize from "../lib/config/database";
 
 const CHECK_INTERVAL = 10 * 1000; // check every 10 seconds
@@ -39,11 +40,11 @@ export const startReservationScheduler = () => {
 
             // notify all clients about stock change + expired reservaton
             const io = getIO();
-            io.emit("stock-update", {
+            io.emit(SOCKET_EVENTS.INVENTORY_UPDATE, {
               dropId: drop.id,
               availableStock: drop.availableStock,
             });
-            io.emit("reservation-expired", {
+            io.emit(SOCKET_EVENTS.RESERVATION_UPDATE, {
               reservationId: reservation.id,
               dropId: drop.id,
               userId: reservation.userId,
