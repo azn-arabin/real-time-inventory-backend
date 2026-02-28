@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { Drop, Purchase, User } from "../models";
+import { getIO } from "../socket";
+import { SOCKET_EVENTS } from "../lib/constants/utils.constants";
 import {
   sendSuccessResponse,
   sendFailureResponse,
@@ -27,6 +29,10 @@ export const createDrop = async (req: Request, res: Response) => {
       imageUrl: imageUrl || null,
       dropStartsAt: dropStartsAt || new Date(),
     });
+
+    // notify all conected clients about the new drop
+    const io = getIO();
+    io.emit(SOCKET_EVENTS.NEW_DROP, drop.toJSON());
 
     return sendSuccessResponse({
       res,

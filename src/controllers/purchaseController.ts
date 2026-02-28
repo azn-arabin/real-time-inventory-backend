@@ -2,6 +2,7 @@ import { Response } from "express";
 import { Drop, Purchase, Reservation, User } from "../models";
 import sequelize from "../lib/config/database";
 import { getIO } from "../socket";
+import { SOCKET_EVENTS } from "../lib/constants/utils.constants";
 import {
   sendSuccessResponse,
   sendFailureResponse,
@@ -59,10 +60,9 @@ export const completePurchase = async (
     }
 
     // double-check expiry by time
+    // dont mark it expired here - let the schdeuler handle status + stock return
     if (new Date() > reservation.expiresAt) {
-      reservation.status = "expired";
-      await reservation.save({ transaction: t });
-      await t.commit();
+      await t.rollback();
       return sendFailureResponse({
         res,
         statusCode: 410,
@@ -89,7 +89,7 @@ export const completePurchase = async (
     // broadcast purchase to all clients
     const io = getIO();
     const user = await User.findByPk(userId);
-    io.emit("purchase-made", {
+    io.emit(SOCKET_EVENTS.PURCHASE_UPDATE, {
       dropId: reservation.dropId,
       username: user?.username || "unknown",
       purchasedAt: purchase.createdAt,
