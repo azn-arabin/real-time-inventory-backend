@@ -1,13 +1,13 @@
 import { Router } from "express";
 import {
   reserveItem,
-  getUserReservation,
+  getUserReservations,
 } from "../controllers/reservationController";
 import { anyUserAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post("/", anyUserAuth, reserveItem);
-router.get("/", anyUserAuth, getUserReservation);
+router.get("/", anyUserAuth, getUserReservations);
 
 export default router;

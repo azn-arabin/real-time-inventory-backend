@@ -37,13 +37,13 @@ export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 
-  // use a transaction with row-level locking
+  // use READ COMMITTED + row lock so transactions queue up
   const t = await sequelize.transaction({
-    isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+    isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
   });
 
   try {
-    // lock the drop row so no other transaction can modify it
+    // lock the drop row so no other transaction can modify it concurently
     const drop = await Drop.findByPk(dropId, {
       lock: Transaction.LOCK.UPDATE,
       transaction: t,
@@ -98,44 +98,35 @@ export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
     });
   } catch (err: any) {
     await t.rollback();
-    // serialization failure means another transaction beat us
-    if (err.parent?.code === "40001") {
-      return sendFailureResponse({
-        res,
-        statusCode: 409,
-        message: "Someone else grabbed it first, try again",
-      });
-    }
     console.error("reserveItem error:", err);
-    return sendFailureResponse({ res, message: "Reservation failed" });
+    return sendFailureResponse({
+      res,
+      message: "Reservation failed, please try again",
+    });
   }
 };
 
-// get active reservation for current user on a specific drop
-export const getUserReservation = async (
+// get ALL active reservations for the current user
+export const getUserReservations = async (
   req: AuthenticatedRequest,
   res: Response,
 ) => {
   try {
     const userId = req.user!.userId;
-    const { dropId } = req.query;
 
-    const where: any = { userId, status: "active" };
-    if (dropId) where.dropId = dropId as string;
+    const reservations = await Reservation.findAll({
+      where: { userId, status: "active" },
+      order: [["createdAt", "DESC"]],
+    });
 
-    const reservation = await Reservation.findOne({ where });
+    // filter out any that have already expired but scheduler hasnt cleaned up yet
+    const active = reservations.filter(
+      (r) => new Date(r.expiresAt) > new Date(),
+    );
 
-    if (!reservation) {
-      return sendFailureResponse({
-        res,
-        statusCode: 404,
-        message: "No active reservation found",
-      });
-    }
-
-    return sendSuccessResponse({ res, data: reservation });
+    return sendSuccessResponse({ res, data: active });
   } catch (err) {
-    console.error("getUserReservation error:", err);
+    console.error("getUserReservations error:", err);
     return sendFailureResponse({ res });
   }
 };
