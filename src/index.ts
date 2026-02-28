@@ -7,6 +7,7 @@ import morgan from "morgan";
 import sequelize from "./lib/config/database";
 import { initSocket } from "./socket";
 import { startReservationScheduler } from "./scheduler/reservationScheduler";
+import { seedDatabase } from "./lib/seeders/seed";
 import { globalErrorHandler } from "./lib/helpers/globalError";
 
 // route imports
@@ -52,8 +53,11 @@ const PORT = parseInt(process.env.PORT || "5000");
 // sync db then start listning
 sequelize
   .sync({ alter: true })
-  .then(() => {
+  .then(async () => {
     console.log("database synced succesfully");
+
+    // seed the db with some test data if its empty
+    await seedDatabase();
 
     // kick off the reservaton expiry scheduler
     startReservationScheduler();
