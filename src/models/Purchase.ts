@@ -6,6 +6,8 @@ class Purchase extends Model {
   declare userId: string;
   declare dropId: string;
   declare reservationId: string;
+  declare createdAt: Date;
+  declare updatedAt: Date;
 }
 
 Purchase.init(

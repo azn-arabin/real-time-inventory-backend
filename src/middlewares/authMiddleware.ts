@@ -14,7 +14,6 @@ export interface AuthPayload {
 export interface AuthenticatedRequest extends Request {
   user?: {
     userId: string;
-    id: string;
     username: string;
     email: string;
     role: "admin" | "user";
@@ -65,7 +64,6 @@ export const authorizationMiddleware = ({
 
       req.user = {
         userId: dbUser.id,
-        id: dbUser.id,
         username: dbUser.username,
         email: dbUser.email,
         role: dbUser.role,

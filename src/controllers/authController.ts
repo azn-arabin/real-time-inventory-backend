@@ -7,6 +7,15 @@ import {
   sendFieldErrorResponse,
 } from "../lib/helpers/responseHelper";
 
+const signToken = (user: User) => {
+  const expiresIn = process.env.JWT_EXPIRES_IN || "7d";
+  return jwt.sign(
+    { userId: user.id, role: user.role } as jwt.JwtPayload,
+    process.env.JWT_SECRET!,
+    { expiresIn } as jwt.SignOptions,
+  );
+};
+
 // register
 export const registerUser = async (req: Request, res: Response) => {
   try {
@@ -44,11 +53,7 @@ export const registerUser = async (req: Request, res: Response) => {
     const user = await User.create({ username, email, password });
 
     // generate token right after registration
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
-    );
+    const token = signToken(user);
 
     return sendSuccessResponse({
       res,
@@ -108,11 +113,7 @@ export const loginUser = async (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
-    );
+    const token = signToken(user);
 
     return sendSuccessResponse({
       res,
