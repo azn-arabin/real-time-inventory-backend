@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { Purchase, Reservation, User } from "../models";
+import { Drop, Purchase, Reservation, User } from "../models";
 import sequelize from "../lib/config/database";
 import { getIO } from "../socket";
 import {
@@ -105,5 +105,31 @@ export const completePurchase = async (
     await t.rollback();
     console.error("completePurchase error:", err);
     return sendFailureResponse({ res, message: "Purchase failed" });
+  }
+};
+
+// get all purschases for the logged in user
+export const getMyPurchases = async (
+  req: AuthenticatedRequest,
+  res: Response,
+) => {
+  try {
+    const userId = req.user!.userId;
+
+    const purchases = await Purchase.findAll({
+      where: { userId },
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Drop,
+          attributes: ["id", "name", "price", "imageUrl"],
+        },
+      ],
+    });
+
+    return sendSuccessResponse({ res, data: purchases });
+  } catch (err) {
+    console.error("getMyPurchases error:", err);
+    return sendFailureResponse({ res, message: "Failed to get purchases" });
   }
 };

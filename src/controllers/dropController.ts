@@ -68,8 +68,8 @@ export const getDrops = async (req: Request, res: Response) => {
 
         return {
           ...drop.toJSON(),
-          recentPurchasers: recentPurchases.map((p: any) => ({
-            username: p.User?.username,
+          topPurchasers: recentPurchases.map((p: any) => ({
+            username: p.User?.username || "unknown",
             purchasedAt: p.createdAt,
           })),
         };
@@ -87,7 +87,7 @@ export const getDrops = async (req: Request, res: Response) => {
   }
 };
 
-// get single drop by id
+// get single drop by id - also includes top 3 purchasers
 export const getDrop = async (req: Request, res: Response) => {
   try {
     const drop = await Drop.findByPk(req.params.id as string);
@@ -98,7 +98,29 @@ export const getDrop = async (req: Request, res: Response) => {
         message: "Drop not found",
       });
     }
-    return sendSuccessResponse({ res, data: drop });
+
+    // fetch top 3 recent purchasers for this drop
+    const recentPurchases = await Purchase.findAll({
+      where: { dropId: drop.id },
+      order: [["createdAt", "DESC"]],
+      limit: 3,
+      include: [
+        {
+          model: User,
+          attributes: ["id", "username"],
+        },
+      ],
+    });
+
+    const dropData = {
+      ...drop.toJSON(),
+      topPurchasers: recentPurchases.map((p: any) => ({
+        username: p.User?.username || "unknown",
+        purchasedAt: p.createdAt,
+      })),
+    };
+
+    return sendSuccessResponse({ res, data: dropData });
   } catch (err) {
     console.error("getDrop error:", err);
     return sendFailureResponse({ res, message: "Failed to fetch drop" });

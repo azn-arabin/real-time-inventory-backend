@@ -37,7 +37,7 @@ export const startReservationScheduler = () => {
 
             await t.commit();
 
-            // notify all clients that stock changed
+            // notify all clients about stock change + expired reservaton
             const io = getIO();
             io.emit("stock-update", {
               dropId: drop.id,
@@ -47,6 +47,7 @@ export const startReservationScheduler = () => {
               reservationId: reservation.id,
               dropId: drop.id,
               userId: reservation.userId,
+              availableStock: drop.availableStock,
             });
 
             console.log(
