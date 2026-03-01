@@ -287,5 +287,3 @@ export async function seedDatabase() {
     console.error("seeding error:", err);
   }
 }
-
-seedDatabase();

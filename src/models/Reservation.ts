@@ -38,6 +38,12 @@ Reservation.init(
     sequelize,
     tableName: "reservations",
     timestamps: true,
+    indexes: [
+      // scheduler queries active + expired reservations frequently
+      { fields: ["status", "expiresAt"] },
+      // checking if user already has active reservation for a drop
+      { fields: ["userId", "dropId", "status"] },
+    ],
   },
 );
 

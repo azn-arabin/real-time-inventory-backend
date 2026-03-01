@@ -25,18 +25,6 @@ export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
     });
   }
 
-  // check if user already has an active reservation for this drop
-  const existingReservation = await Reservation.findOne({
-    where: { userId, dropId, status: "active" },
-  });
-  if (existingReservation) {
-    return sendFailureResponse({
-      res,
-      statusCode: 409,
-      message: "You already have an active reservation for this item",
-    });
-  }
-
   // use READ COMMITTED + row lock so transactions queue up
   const t = await sequelize.transaction({
     isolationLevel: Transaction.ISOLATION_LEVELS.READ_COMMITTED,
@@ -55,6 +43,21 @@ export const reserveItem = async (req: AuthenticatedRequest, res: Response) => {
         res,
         statusCode: 404,
         message: "Drop not found",
+      });
+    }
+
+    // check duplicate INSIDE the transaction so its safe from race conditions
+    // (the FOR UPDATE lock above means any other request for the same drop waits)
+    const existingReservation = await Reservation.findOne({
+      where: { userId, dropId, status: "active" },
+      transaction: t,
+    });
+    if (existingReservation) {
+      await t.rollback();
+      return sendFailureResponse({
+        res,
+        statusCode: 409,
+        message: "You already have an active reservation for this item",
       });
     }
 

@@ -8,6 +8,7 @@ import sequelize from "./src/lib/config/database";
 import { initSocket } from "./src/socket";
 import { startReservationScheduler } from "./src/scheduler/reservationScheduler";
 import { globalErrorHandler } from "./src/lib/helpers/globalError";
+import { seedDatabase } from "./src/lib/seeders/seed";
 import userRoutes from "./src/routes/userRoutes";
 import dropRoutes from "./src/routes/dropRoutes";
 import reservationRoutes from "./src/routes/reservationRoutes";
@@ -60,8 +61,10 @@ const PORT = process.env.PORT || 5000;
 // sync db
 sequelize
   .sync({ alter: true })
-  .then(() => {
+  .then(async () => {
     console.log("database synced");
+
+    await seedDatabase();
 
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);

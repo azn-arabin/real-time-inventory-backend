@@ -28,12 +28,19 @@ Purchase.init(
     reservationId: {
       type: DataTypes.UUID,
       allowNull: false,
+      unique: true,
     },
   },
   {
     sequelize,
     tableName: "purchases",
     timestamps: true,
+    indexes: [
+      // fetching top 3 purchasers per drop (ordered by createdAt)
+      { fields: ["dropId", "createdAt"] },
+      // user purchase history
+      { fields: ["userId"] },
+    ],
   },
 );
 

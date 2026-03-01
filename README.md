@@ -134,7 +134,7 @@ The app uses 4 main tables. Sequelize handles the table creation automaticaly on
 | ------ | --------------------- | ----------------- | ---- |
 | POST   | `/api/users/register` | Register new user | No   |
 | POST   | `/api/users/login`    | Login, get JWT    | No   |
-| GET    | `/api/users/me`       | Get current user  | Yes  |
+| GET    | `/api/users/:id`      | Get user by ID    | Yes  |
 
 ### Drops
 
@@ -146,10 +146,10 @@ The app uses 4 main tables. Sequelize handles the table creation automaticaly on
 
 ### Reservations
 
-| Method | Endpoint                 | Description                    | Auth |
-| ------ | ------------------------ | ------------------------------ | ---- |
-| POST   | `/api/reservations`      | Reserve an item (60s TTL)      | Yes  |
-| GET    | `/api/reservations/mine` | Get all my active reservations | Yes  |
+| Method | Endpoint            | Description                    | Auth |
+| ------ | ------------------- | ------------------------------ | ---- |
+| POST   | `/api/reservations` | Reserve an item (60s TTL)      | Yes  |
+| GET    | `/api/reservations` | Get all my active reservations | Yes  |
 
 ### Purchases
 
@@ -164,7 +164,7 @@ The app uses 4 main tables. Sequelize handles the table creation automaticaly on
 
 When a user clicks "Reserve", we create a reservation record with an `expiresAt` timestamp thats 60 seconds in the future. The available stock is decremented immediately in the same transaction.
 
-A background **scheduler** (using `setInterval`) runs every 10 seconds to check for any active reservations where `expiresAt < now()`. For each expired one, it:
+A background **scheduler** (using `setInterval`) runs every 5 seconds to check for any active reservations where `expiresAt < now()`. For each expired one, it:
 
 - Marks the reservation status as `expired`
 - Adds back 1 unit to the drop's `availableStock`
