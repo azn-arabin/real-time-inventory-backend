@@ -54,7 +54,10 @@ export const getDrops = async (req: Request, res: Response) => {
     const result = await paginate(Drop, {
       page: page as string,
       pageSize: pageSize as string,
-      order: [["createdAt", "DESC"]],
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "ASC"],
+      ],
     });
 
     // attach recent purchasers for each drop
