@@ -2,8 +2,6 @@ import { User, Drop, Reservation, Purchase } from "../../models";
 
 /**
  * Seeds the database with some initial data for testing.
- * Ideally run this once on a fresh db, calling it again wont
- * dupliacte data because we check if admin user already exists.
  */
 export async function seedDatabase() {
   try {
